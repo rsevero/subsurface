@@ -6,17 +6,22 @@ extern "C" {
 #endif
 
 typedef enum { STABLE, SLOW, MODERATE, FAST, CRAZY } velocity_t;
+typedef enum { NOT_IN_USE, OC, CCR_O2, CCR_DILUENT } cylinder_segment_use_t;
 
 struct divecomputer;
 struct graphics_context;
 struct plot_info;
-struct plot_data {
-	unsigned int in_deco:1;
-	int cylinderindex;
-	int sec;
+struct plot_cylinder_data {
+        cylinder_segment_use_t usage;
 	/* pressure[0] is sensor pressure
 	 * pressure[1] is interpolated pressure */
-	int pressure[2];
+        int pressure[2];
+        int sac;
+        int pressure_time;
+};
+struct plot_data {
+	unsigned int in_deco:1;
+	int sec;
 	int temperature;
 	/* Depth info */
 	int depth;
@@ -27,7 +32,6 @@ struct plot_data {
 	int stopdepth;
 	int cns;
 	int smoothed;
-	int sac;
 	double po2, pn2, phe;
 	double mod, ead, end, eadd;
 	velocity_t velocity;
@@ -41,7 +45,7 @@ struct plot_data {
 	int tts_calc;
 	int stoptime_calc;
 	int stopdepth_calc;
-	int pressure_time;
+        struct plot_cylinder_data *cylinder[MAX_CYLINDERS];
 };
 //TODO: remove the calculatE_max_limits as soon as the new profile is done.
 void calculate_max_limits(struct dive *dive, struct divecomputer *dc, struct graphics_context *gc);
@@ -111,9 +115,9 @@ void setup_pp_limits(struct graphics_context *gc);
 
 #define SENSOR_PR 0
 #define INTERPOLATED_PR 1
-#define SENSOR_PRESSURE(_entry) (_entry)->pressure[SENSOR_PR]
-#define INTERPOLATED_PRESSURE(_entry) (_entry)->pressure[INTERPOLATED_PR]
-#define GET_PRESSURE(_entry) (SENSOR_PRESSURE(_entry) ? SENSOR_PRESSURE(_entry) : INTERPOLATED_PRESSURE(_entry))
+#define SENSOR_PRESSURE(_entry_cylinder) (_entry_cylinder)->pressure[SENSOR_PR]
+#define INTERPOLATED_PRESSURE(_entry_cylinder) (_entry_cylinder)->pressure[INTERPOLATED_PR]
+#define GET_PRESSURE(_entry_cylinder) (SENSOR_PRESSURE(_entry_cylinder) ? SENSOR_PRESSURE(_entry_cylinder) : INTERPOLATED_PRESSURE(_entry_cylinder))
 
 #define SAC_WINDOW 45	/* sliding window in seconds for current SAC calculation */
 
