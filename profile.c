@@ -959,6 +959,7 @@ struct plot_data *populate_plot_entries(struct dive *dive, struct divecomputer *
 		entry->in_deco = sample->in_deco;
 		entry->cns = sample->cns;
 		entry->po2 = sample->po2 / 1000.0;
+		printf("Sample %d: time %d - depth %d sensor %d - entry cylinder pressure %d\n", i, sample->time.seconds, sample->depth.mm, sample->sensor, entry->cylinder[sample->sensor]->pressure[0]);
 		SENSOR_PRESSURE(entry->cylinder[sample->sensor]) = sample->cylinderpressure.mbar;
 		if (sample->temperature.mkelvin)
 			entry->temperature = lasttemp = sample->temperature.mkelvin;

@@ -27,7 +27,7 @@ QVariant DivePlotDataModel::data(const QModelIndex& index, int role) const
 		switch (index.column()) {
 			case DEPTH:		return item.depth;
 			case TIME:		return item.sec;
-//			case PRESSURE:		return item.pressure[0];
+			case PRESSURE:		return item.temperature;
 			case TEMPERATURE:	return item.temperature;
 			case COLOR:		return item.velocity;
 			case USERENTERED:	return false;

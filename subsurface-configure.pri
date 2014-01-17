@@ -5,7 +5,7 @@
 #  - calling implicit functions
 #  - casting from integers to pointers or vice-versa without an explicit cast
 # Also turn on C99 mode with GNU extensions
-*-g++*: QMAKE_CFLAGS += -Werror=int-to-pointer-cast -Werror=pointer-to-int-cast -Werror=implicit-int 
+*-g++*: QMAKE_CFLAGS += -Werror=int-to-pointer-cast -Werror=pointer-to-int-cast -g 
 
 # these warnings are in general just wrong and annoying - but should be
 # turned on every once in a while in case they do show the occasional
