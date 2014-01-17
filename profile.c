@@ -13,6 +13,7 @@
 #include "deco.h"
 #include "libdivecomputer/parser.h"
 #include "libdivecomputer/version.h"
+#include "helpers.h"
 
 int selected_dive = -1; /* careful: 0 is a valid value */
 char zoomed_plot = 0;
@@ -40,14 +41,14 @@ static void dump_pi (struct plot_info *pi)
 			entry->po2, entry->phe, entry->pn2,
 			entry->po2 + entry->phe + entry->pn2);
 		for (j = 0; j < MAX_CYLINDERS; j++) {
-			if (entry->cylinder[j]->usage == NOT_IN_USE)
+			if (entry->cylinder[j].usage == NOT_IN_USE)
 				printf("    cylinderindex:%d not in use on this entry.\n", j);
 			else
 				printf("    cylinderindex:%d:{usage:%d pressure:{%d,%d pressure_time:%d}\n",
-					j, entry->cylinder[j]->usage,
-					entry->cylinder[j]->pressure[SENSOR_PR],
-					entry->cylinder[j]->pressure[INTERPOLATED_PR],
-					entry->cylinder[j]->pressure_time);
+					j, entry->cylinder[j].usage,
+					entry->cylinder[j].pressure[SENSOR_PR],
+					entry->cylinder[j].pressure[INTERPOLATED_PR],
+					entry->cylinder[j].pressure_time);
 		}
 	}
 	printf("   }\n");
@@ -220,8 +221,8 @@ static int get_local_sac(struct plot_data *entry1, struct plot_data *entry2, str
 	pressure_t a, b;
 	double atm;
 
-	if ((entry1->cylinder[cyl_index]->usage == NOT_IN_USE) ||
-		(entry2->cylinder[cyl_index]->usage == NOT_IN_USE))
+	if ((entry1->cylinder[cyl_index].usage == NOT_IN_USE) ||
+		(entry2->cylinder[cyl_index].usage == NOT_IN_USE))
 		return 0;
 	if (duration <= 0)
 		return 0;
@@ -582,7 +583,7 @@ static struct pr_interpolate_struct get_pr_interpolate_data(pr_track_t *segment,
 		if (entry->sec < segment->t_start)
 			continue;
 		if (entry->sec >= segment->t_end) {
-			interpolate.pressure_time += entry->cylinder[cyl_index]->pressure_time;
+			interpolate.pressure_time += entry->cylinder[cyl_index].pressure_time;
 			break;
 		}
 		if (entry->sec == segment->t_start) {
@@ -598,17 +599,17 @@ static struct pr_interpolate_struct get_pr_interpolate_data(pr_track_t *segment,
 				interpolate.acc_pressure_time = 0;
 				interpolate.pressure_time = 0;
 			} else {
-				interpolate.acc_pressure_time += entry->cylinder[cyl_index]->pressure_time;
-				interpolate.pressure_time += entry->cylinder[cyl_index]->pressure_time;
+				interpolate.acc_pressure_time += entry->cylinder[cyl_index].pressure_time;
+				interpolate.pressure_time += entry->cylinder[cyl_index].pressure_time;
 			}
 			continue;
 		}
 		if (i == cur) {
-			interpolate.acc_pressure_time += entry->cylinder[cyl_index]->pressure_time;
-			interpolate.pressure_time += entry->cylinder[cyl_index]->pressure_time;
+			interpolate.acc_pressure_time += entry->cylinder[cyl_index].pressure_time;
+			interpolate.pressure_time += entry->cylinder[cyl_index].pressure_time;
 			continue;
 		}
-		interpolate.pressure_time += entry->cylinder[cyl_index]->pressure_time;
+		interpolate.pressure_time += entry->cylinder[cyl_index].pressure_time;
 		if (SENSOR_PRESSURE(entry->cylinder[cyl_index])) {
 			interpolate.end = SENSOR_PRESSURE(entry->cylinder[cyl_index]);
 			break;
@@ -643,7 +644,7 @@ static void fill_missing_tank_pressures(struct dive *dive, struct plot_info *pi,
 
 		entry = pi->entry + i;
 		for (cyl = 0; cyl < MAX_CYLINDERS; cyl++) {
-			if (entry->cylinder[cyl]->usage == NOT_IN_USE)
+			if (entry->cylinder[cyl].usage == NOT_IN_USE)
 				continue;
 
 			if (SENSOR_PRESSURE(entry->cylinder[cyl])) {
@@ -739,9 +740,9 @@ static int set_cylinder_index(struct plot_info *pi, int i, int cylinderindex, un
 		struct plot_data *entry = pi->entry+i;
 		if (entry->sec > end)
 			break;
-		if (entry->cylinder[cylinderindex]->usage != usage) {
-			entry->cylinder[cylinderindex]->usage = usage;
-			entry->cylinder[cylinderindex]->pressure[0] = 0;
+		if (entry->cylinder[cylinderindex].usage != usage) {
+			entry->cylinder[cylinderindex].usage = usage;
+			entry->cylinder[cylinderindex].pressure[SENSOR_PR] = 0;
 		}
 		i++;
 	}
@@ -959,7 +960,9 @@ struct plot_data *populate_plot_entries(struct dive *dive, struct divecomputer *
 		entry->in_deco = sample->in_deco;
 		entry->cns = sample->cns;
 		entry->po2 = sample->po2 / 1000.0;
-		printf("Sample %d: time %d - depth %d sensor %d - entry cylinder pressure %d\n", i, sample->time.seconds, sample->depth.mm, sample->sensor, entry->cylinder[sample->sensor]->pressure[0]);
+		printf("Sample %d: time %d - depth %d sensor %d - entry cylinder pressure %d\n", 
+			i, sample->time.seconds, sample->depth.mm, sample->sensor, 
+			get_pressure_string(entry->cylinder[sample->sensor]));
 		SENSOR_PRESSURE(entry->cylinder[sample->sensor]) = sample->cylinderpressure.mbar;
 		if (sample->temperature.mkelvin)
 			entry->temperature = lasttemp = sample->temperature.mkelvin;
@@ -986,7 +989,7 @@ static void populate_cylinder_pressure_data(int idx, int start, int end, struct 
 	/* First: check that none of the entries has sensor pressure for this cylinder index */
 	for (i = 0; i < pi->nr; i++) {
 		struct plot_data *entry = pi->entry+i;
-		if (entry->cylinder[idx]->usage == NOT_IN_USE)
+		if (entry->cylinder[idx].usage == NOT_IN_USE)
 			continue;
 		if (SENSOR_PRESSURE(entry->cylinder[idx]))
 			return;
@@ -995,7 +998,7 @@ static void populate_cylinder_pressure_data(int idx, int start, int end, struct 
 	/* Then: populate the first entry with the beginning cylinder pressure */
 	for (i = 0; i < pi->nr; i++) {
 		struct plot_data *entry = pi->entry+i;
-		if (entry->cylinder[idx]->usage == NOT_IN_USE)
+		if (entry->cylinder[idx].usage == NOT_IN_USE)
 			continue;
 		SENSOR_PRESSURE(entry->cylinder[idx]) = start;
 		break;
@@ -1004,7 +1007,7 @@ static void populate_cylinder_pressure_data(int idx, int start, int end, struct 
 	/* .. and the last entry with the ending cylinder pressure */
 	for (i = pi->nr; --i >= 0; /* nothing */) {
 		struct plot_data *entry = pi->entry+i;
-		if (entry->cylinder[idx]->usage == NOT_IN_USE)
+		if (entry->cylinder[idx].usage == NOT_IN_USE)
 			continue;
 		SENSOR_PRESSURE(entry->cylinder[idx]) = end;
 		break;
@@ -1019,18 +1022,18 @@ static void calculate_sac(struct dive *dive, struct plot_info *pi)
 	for (cyl = 0; cyl < MAX_CYLINDERS; cyl++) {
 		for (i = 0; i < pi->nr; i++) {
 			struct plot_data *entry = pi->entry+i;
-			if (entry->cylinder[cyl]->usage == NOT_IN_USE)
+			if (entry->cylinder[cyl].usage == NOT_IN_USE)
 				continue;
-			if (!last_entry || last_entry->cylinder[cyl]->usage != entry->cylinder[cyl]->usage) {
+			if (!last_entry || last_entry->cylinder[cyl].usage != entry->cylinder[cyl].usage) {
 				last = i;
 				last_entry = entry;
-				entry->cylinder[cyl]->sac = get_local_sac(entry, pi->entry + i + 1, dive, cyl);
+				entry->cylinder[cyl].sac = get_local_sac(entry, pi->entry + i + 1, dive, cyl);
 			} else {
 				int j;
-				entry->cylinder[cyl]->sac = 0;
+				entry->cylinder[cyl].sac = 0;
 				for (j = last; j < i; j++)
-					entry->cylinder[cyl]->sac += get_local_sac(pi->entry + j, pi->entry + j + 1, dive, cyl);
-				entry->cylinder[cyl]->sac /= (i - last);
+					entry->cylinder[cyl].sac += get_local_sac(pi->entry + j, pi->entry + j + 1, dive, cyl);
+				entry->cylinder[cyl].sac /= (i - last);
 				if (entry->sec - last_entry->sec >= SAC_WINDOW) {
 					last++;
 					last_entry = pi->entry + last;
@@ -1090,7 +1093,7 @@ static void populate_pressure_information(struct dive *dive, struct divecomputer
 			struct plot_data *previous_entry;
 			unsigned pressure = SENSOR_PRESSURE(entry->cylinder[cyl_index]);
 
-			if (entry->cylinder[cyl_index]->usage == NOT_IN_USE) {
+			if (entry->cylinder[cyl_index].usage == NOT_IN_USE) {
 				first_segment_entry = true;
 				continue;
 			}
@@ -1098,15 +1101,15 @@ static void populate_pressure_information(struct dive *dive, struct divecomputer
 			if (first_segment_entry) {
 				first_segment_entry = true;
 				/* track the segments per cylinder and their pressure/time integral */
-				current = pr_track_alloc(pressure, entry->sec, entry->cylinder[cyl_index]->usage);
+				current = pr_track_alloc(pressure, entry->sec, entry->cylinder[cyl_index].usage);
 				track_pr[cyl_index] = list_add(track_pr[cyl_index], current);
 				continue;
 			}
 			else {
 				previous_entry = pi->entry + i - 1;
-				if (entry->cylinder[cyl_index]->usage == previous_entry->cylinder[cyl_index]->usage) {
-					entry->cylinder[cyl_index]->pressure_time = pressure_time(dive, dc, previous_entry, entry, entry->cylinder[cyl_index]->usage);
-					current->pressure_time += entry->cylinder[cyl_index]->pressure_time;
+				if (entry->cylinder[cyl_index].usage == previous_entry->cylinder[cyl_index].usage) {
+					entry->cylinder[cyl_index].pressure_time = pressure_time(dive, dc, previous_entry, entry, entry->cylinder[cyl_index].usage);
+					current->pressure_time += entry->cylinder[cyl_index].pressure_time;
 					current->t_end = entry->sec;
 				}
 				else {
@@ -1127,7 +1130,7 @@ static void populate_pressure_information(struct dive *dive, struct divecomputer
 				continue;
 
 			/* transmitter changed its working status */
-			current = pr_track_alloc(pressure, entry->sec, entry->cylinder[cyl_index]->usage);
+			current = pr_track_alloc(pressure, entry->sec, entry->cylinder[cyl_index].usage);
 			track_pr[cyl_index] = list_add(track_pr[cyl_index], current);
 		}
 
@@ -1160,7 +1163,7 @@ static void calculate_ndl_tts(double tissue_tolerance, struct plot_data *entry, 
 
 	/* Finding for which cylinder we should calculate NDL. */
 	for (cylinderindex = 0; cylinderindex < MAX_CYLINDERS; cylinderindex++)
-		if (entry->cylinder[cylinderindex]->usage == OC)
+		if (entry->cylinder[cylinderindex].usage == OC)
 			break;
 
 	/* If there is no OC cylinder in use in this entry, we have no NDL to calculate. */
@@ -1244,8 +1247,8 @@ static void calculate_deco_information(struct dive *dive, struct divecomputer *d
 			 * from 2 different sources at the same time. */
 			for (cyl_index = 0; cyl_index < MAX_CYLINDERS; cyl_index++)
 				/* We only calculate NDL for OC or CCR_DILUENT usages. */
-				if ((entry->cylinder[cyl_index]->usage != OC)
-					&& (entry->cylinder[cyl_index]->usage != CCR_DILUENT))
+				if ((entry->cylinder[cyl_index].usage != OC)
+					&& (entry->cylinder[cyl_index].usage != CCR_DILUENT))
 					continue;
 			/* If there is neither OC nor CCR_DILUENT cylinder in use in this entry,
 			 * we have no NDL to calculate. */
@@ -1296,8 +1299,8 @@ static void calculate_gas_information(struct dive *dive,  struct plot_info *pi)
 		 from 2 different sources at the same time. */
 		for (cylinderindex = 0; cylinderindex < MAX_CYLINDERS; cylinderindex++)
 			/* We only calculate NDL for OC or CCR_DILUENT usages. */
-			if ((entry->cylinder[cylinderindex]->usage != OC)
-				&& (entry->cylinder[cylinderindex]->usage != CCR_DILUENT))
+			if ((entry->cylinder[cylinderindex].usage != OC)
+				&& (entry->cylinder[cylinderindex].usage != CCR_DILUENT))
 				continue;
 		/* If there is neither OC nor CCR_DILUENT cylinder in use in this entry, we have no NDL to calculate. */
 		if (cylinderindex == MAX_CYLINDERS)
@@ -1457,13 +1460,13 @@ static void plot_string(struct plot_data *entry, char *buf, int bufsize,
 	depthvalue = get_depth_units(entry->depth, NULL, &depth_unit);
 	snprintf(buf, bufsize, translate("gettextFromC","@:%d:%02d\nD:%.1f %s"), FRACTION(entry->sec, 60), depthvalue, depth_unit);
 	for (cyl_index = 0; cyl_index < MAX_CYLINDERS; cyl_index++) {
-		if (entry->cylinder[cyl_index]->usage == NOT_IN_USE)
+		if (entry->cylinder[cyl_index].usage == NOT_IN_USE)
 			continue;
 		if (GET_PRESSURE(entry->cylinder[cyl_index])) {
 			pressurevalue = get_pressure_units(GET_PRESSURE(entry->cylinder[cyl_index]), &pressure_unit);
 			memcpy(buf2, buf, bufsize);
 			snprintf(buf, bufsize, translate("gettextFromC","%s\nP (%s):%d %s"),
-				buf2, get_usage_name(entry->cylinder[cyl_index]->usage), pressurevalue, pressure_unit);
+				buf2, get_usage_name(entry->cylinder[cyl_index].usage), pressurevalue, pressure_unit);
 		}
 	}
 	if (entry->temperature) {
@@ -1481,10 +1484,12 @@ static void plot_string(struct plot_data *entry, char *buf, int bufsize,
 	if (prefs.show_sac) {
 		int i;
 		for (i = 0; i < MAX_CYLINDERS; i++) {
-			if (entry->cylinder[i]->usage == NOT_IN_USE)
+			if (entry->cylinder[i].usage == NOT_IN_USE)
 				continue;
 			memcpy(buf2, buf, bufsize);
-			snprintf(buf, bufsize, translate("gettextFromC","%s\nSAC (%s):%2.1fl/min"), get_usage_name(entry->cylinder[i]->usage), buf2, entry->cylinder[i]->sac / 1000.0);
+			snprintf(buf, bufsize, translate("gettextFromC","%s\nSAC (%s):%2.1fl/min"), 
+				get_usage_name(entry->cylinder[i].usage), buf2, 
+				entry->cylinder[i].sac / 1000.0);
 		}
 	}
 	if (entry->cns) {
@@ -1661,7 +1666,7 @@ void compare_samples(struct plot_data *e1, struct plot_data *e2, char *buf, int 
 			max_depth = data->depth;
 
 		for (cyl_index = 0; cyl_index < MAX_CYLINDERS; cyl_index++) {
-			if (data->cylinder[cyl_index]->usage == NOT_IN_USE)
+			if (data->cylinder[cyl_index].usage == NOT_IN_USE)
 				continue;
 			gas_used = true;
 			cyl_used[cyl_index] = true;
@@ -1710,14 +1715,14 @@ void compare_samples(struct plot_data *e1, struct plot_data *e2, char *buf, int 
 		for (cyl_index = 0; cyl_index < MAX_CYLINDERS; cyl_index++) {
 			if (!cyl_used[cyl_index])
 				continue;
-			int raw_pressure_change = start->cylinder[cyl_index]->pressure - stop->cylinder[cyl_index]->pressure;
+			int raw_pressure_change = GET_PRESSURE(start->cylinder[cyl_index]) - GET_PRESSURE(stop->cylinder[cyl_index]);
 			int pressure_change = get_pressure_units(raw_pressure_change, &pressure_unit);
 			snprintf(buf, bufsize,
 				translate("gettextFromC","%s %sP %d:%d %s %s %s %s "),
 				buf2, UTF8_DELTA, cyl_index, pressure_change, pressure_unit,
-				get_usage_name(start->cylinder[cyl_index]->usage),
+				get_usage_name(start->cylinder[cyl_index].usage),
 				UTF8_RIGHTWARDS_ARROW,
-				get_usage_name(stop->cylinder[cyl_index]->usage));
+				get_usage_name(stop->cylinder[cyl_index].usage));
 			memcpy(buf2, buf, bufsize);
 		}
 	}
