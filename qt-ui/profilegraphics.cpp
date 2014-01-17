@@ -718,7 +718,7 @@ void ProfileGraphicsView::plot_deco_text()
 void ProfileGraphicsView::plot_cylinder_pressure_text()
 {
 	int i;
-	int mbar, cyl;
+	int mbar, cyl_index;
 	int seen_cyl[MAX_CYLINDERS] = { false, };
 	int last_pressure[MAX_CYLINDERS] = { 0, };
 	int last_time[MAX_CYLINDERS] = { 0, };
@@ -732,28 +732,28 @@ void ProfileGraphicsView::plot_cylinder_pressure_text()
 
 	for (i = 0; i < pi->nr; i++) {
 		entry = pi->entry + i;
-		for (cyl = 0; cyl < MAX_CYLINDERS; cyl++) {
-			mbar = GET_PRESSURE(entry->cylinder[cyl]);
+		for (cyl_index = 0; cyl_index < MAX_CYLINDERS; cyl_index++) {
+			mbar = GET_PRESSURE(entry->cylinder[cyl_index]);
 
 			if (!mbar)
 				continue;
-			if (entry->cylinder[cyl].usage != NOT_IN_USE) {
-				if (!seen_cyl[cyl]) {
+			if (entry->cylinder[cyl_index].usage != NOT_IN_USE) {
+				if (!seen_cyl[cyl_index]) {
 					plot_pressure_value(mbar, entry->sec, LEFT, BOTTOM);
 					plot_gas_value(mbar, entry->sec, LEFT, TOP,
-							get_o2(&dive->cylinder[cyl].gasmix),
-							get_he(&dive->cylinder[cyl].gasmix));
-					seen_cyl[cyl] = true;
+							get_o2(&dive->cylinder[cyl_index].gasmix),
+							get_he(&dive->cylinder[cyl_index].gasmix));
+					seen_cyl[cyl_index] = true;
 				}
 			}
-			last_pressure[cyl] = mbar;
-			last_time[cyl] = entry->sec;
+			last_pressure[cyl_index] = mbar;
+			last_time[cyl_index] = entry->sec;
 		}
 	}
 
-	for (cyl = 0; cyl < MAX_CYLINDERS; cyl++) {
-		if (last_time[cyl]) {
-			plot_pressure_value(last_pressure[cyl], last_time[cyl], CENTER, TOP);
+	for (cyl_index = 0; cyl_index < MAX_CYLINDERS; cyl_index++) {
+		if (last_time[cyl_index]) {
+			plot_pressure_value(last_pressure[cyl_index], last_time[cyl_index], CENTER, TOP);
 		}
 	}
 }
@@ -886,7 +886,7 @@ void ProfileGraphicsView::plot_single_temp_text(int sec, int mkelvin)
 
 void ProfileGraphicsView::plot_cylinder_pressure()
 {
-	int i, cyl;
+	int i, cyl_index;
 	int lift_pen = false;
 	int first_plot = true;
 	cylinder_segment_use_t last_usage = NOT_IN_USE;
@@ -900,9 +900,9 @@ void ProfileGraphicsView::plot_cylinder_pressure()
 	for (i = 0; i < gc.pi.nr; i++) {
 		int mbar;
 		struct plot_data *entry = gc.pi.entry + i;
-		for (cyl = 0; cyl < MAX_CYLINDERS; cyl++) {
-			mbar = GET_PRESSURE(entry->cylinder[cyl]);
-			if (entry->cylinder[cyl].usage == NOT_IN_USE) {
+		for (cyl_index = 0; cyl_index < MAX_CYLINDERS; cyl_index++) {
+			mbar = GET_PRESSURE(entry->cylinder[cyl_index]);
+			if (entry->cylinder[cyl_index].usage == NOT_IN_USE) {
 				lift_pen = true;
 			}
 			if (!mbar) {
@@ -910,14 +910,14 @@ void ProfileGraphicsView::plot_cylinder_pressure()
 				continue;
 			}
 
-			QColor c = get_sac_color(entry->cylinder[cyl].sac, dive->sac);
+			QColor c = get_sac_color(entry->cylinder[cyl_index].sac, dive->sac);
 
 			if (lift_pen) {
-				if (!first_plot && entry->cylinder[cyl].usage == last_usage) {
+				if (!first_plot && entry->cylinder[cyl_index].usage == last_usage) {
 					/* if we have a previous event from the same tank,
 					 * draw at least a short line */
 					int prev_pr;
-					prev_pr = GET_PRESSURE((entry - 1)->cylinder[cyl]);
+					prev_pr = GET_PRESSURE((entry - 1)->cylinder[cyl_index]);
 
 					QGraphicsLineItem *item = new QGraphicsLineItem(SCALEGC((entry-1)->sec, prev_pr), SCALEGC(entry->sec, mbar));
 					QPen pen(defaultPen);
@@ -939,7 +939,7 @@ void ProfileGraphicsView::plot_cylinder_pressure()
 			}
 
 			from = QPointF(SCALEGC(entry->sec, mbar));
-			last_usage = entry->cylinder[cyl].usage;
+			last_usage = entry->cylinder[cyl_index].usage;
 		}
 	}
 }
@@ -1025,15 +1025,15 @@ void ProfileGraphicsView::plot_one_event(struct event *ev)
 	QString name = gettextFromC::instance()->tr(ev->name);
 	if (ev->value) {
 		if (ev->name && strcmp(ev->name, "gaschange") == 0) {
-			int cyl;
-			for (cyl = 0; cyl < MAX_CYLINDERS; cyl++)
-				if ((entry->cylinder[cyl].usage != OC) &&
-					(entry->cylinder[cyl].usage != CCR_DILUENT))
+			int cyl_index;
+			for (cyl_index = 0; cyl_index < MAX_CYLINDERS; cyl_index++)
+				if ((entry->cylinder[cyl_index].usage != OC) &&
+					(entry->cylinder[cyl_index].usage != CCR_DILUENT))
 					continue;
-			if (cyl == MAX_CYLINDERS)
+			if (cyl_index == MAX_CYLINDERS)
 				return;
-			int he = get_he(&dive->cylinder[cyl].gasmix);
-			int o2 = get_o2(&dive->cylinder[cyl].gasmix);
+			int he = get_he(&dive->cylinder[cyl_index].gasmix);
+			int o2 = get_o2(&dive->cylinder[cyl_index].gasmix);
 
 			name += ": ";
 			if (he)
