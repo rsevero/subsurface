@@ -6,44 +6,45 @@
 #include <QPen>
 #include <QPainter>
 #include <QLinearGradient>
+#include <QDebug>
 
-DiveProfileItem::DiveProfileItem(): QObject(), QGraphicsPolygonItem(),
+AbstractProfilePolygonItem::AbstractProfilePolygonItem(): QObject(), QGraphicsPolygonItem(),
 	hAxis(NULL), vAxis(NULL), dataModel(NULL), hDataColumn(-1), vDataColumn(-1)
 {
 
 }
 
-void DiveProfileItem::setHorizontalAxis(DiveCartesianAxis* horizontal)
+void AbstractProfilePolygonItem::setHorizontalAxis(DiveCartesianAxis* horizontal)
 {
 	hAxis = horizontal;
 	modelDataChanged();
 }
 
-void DiveProfileItem::setHorizontalDataColumn(int column)
+void AbstractProfilePolygonItem::setHorizontalDataColumn(int column)
 {
 	hDataColumn = column;
 	modelDataChanged();
 }
 
-void DiveProfileItem::setModel(QAbstractTableModel* model)
+void AbstractProfilePolygonItem::setModel(QAbstractTableModel* model)
 {
 	dataModel = model;
 	modelDataChanged();
 }
 
-void DiveProfileItem::setVerticalAxis(DiveCartesianAxis* vertical)
+void AbstractProfilePolygonItem::setVerticalAxis(DiveCartesianAxis* vertical)
 {
 	vAxis = vertical;
 	modelDataChanged();
 }
 
-void DiveProfileItem::setVerticalDataColumn(int column)
+void AbstractProfilePolygonItem::setVerticalDataColumn(int column)
 {
 	vDataColumn = column;
 	modelDataChanged();
 }
 
-void DiveProfileItem::modelDataChanged()
+void AbstractProfilePolygonItem::modelDataChanged()
 {
 	// We don't have enougth data to calculate things, quit.
 	if (!hAxis || !vAxis || !dataModel || hDataColumn == -1 || vDataColumn == -1)
@@ -62,13 +63,6 @@ void DiveProfileItem::modelDataChanged()
 		poly.append(point);
 	}
 	setPolygon(poly);
-
-	// This is the blueish gradient that the Depth Profile should have.
-	// It's a simple QLinearGradient with 2 stops, starting from top to bottom.
-	QLinearGradient pat(0, poly.boundingRect().top(), 0, poly.boundingRect().bottom());
-	pat.setColorAt(1, getColor(DEPTH_BOTTOM));
-	pat.setColorAt(0, getColor(DEPTH_TOP));
-	setBrush(QBrush(pat));
 }
 
 void DiveProfileItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
@@ -91,4 +85,50 @@ void DiveProfileItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* o
 		painter->setPen(pen);
 		painter->drawLine(polygon()[i-1],polygon()[i]);
 	}
+}
+
+void DiveProfileItem::modelDataChanged(){
+	AbstractProfilePolygonItem::modelDataChanged();
+	if(polygon().isEmpty())
+		return;
+		// This is the blueish gradient that the Depth Profile should have.
+	// It's a simple QLinearGradient with 2 stops, starting from top to bottom.
+	QLinearGradient pat(0, polygon().boundingRect().top(), 0, polygon().boundingRect().bottom());
+	pat.setColorAt(1, getColor(DEPTH_BOTTOM));
+	pat.setColorAt(0, getColor(DEPTH_TOP));
+	setBrush(QBrush(pat));
+}
+
+DiveTemperatureItem::DiveTemperatureItem()
+{
+	QPen pen;
+	pen.setBrush(QBrush(getColor(::TEMP_PLOT)));
+	pen.setCosmetic(true);
+	pen.setWidth(2);
+	setPen(pen);
+}
+
+void DiveTemperatureItem::modelDataChanged()
+{
+	// We don't have enougth data to calculate things, quit.
+	if (!hAxis || !vAxis || !dataModel || hDataColumn == -1 || vDataColumn == -1)
+		return;
+
+	// Ignore empty values. things do not look good with '0' as temperature in kelvin...
+	QPolygonF poly;
+	for (int i = 0, modelDataCount = dataModel->rowCount(); i < modelDataCount; i++) {
+		qreal verticalValue = dataModel->index(i, vDataColumn).data().toReal();
+		if(!verticalValue)
+			continue;
+		qreal horizontalValue = dataModel->index(i, hDataColumn).data().toReal();
+		QPointF point( hAxis->posAtValue(horizontalValue), vAxis->posAtValue(verticalValue));
+		poly.append(point);
+	}
+	setPolygon(poly);
+}
+
+void DiveTemperatureItem::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget)
+{
+	painter->setPen(pen());
+	painter->drawPolyline(polygon());
 }

@@ -6,12 +6,14 @@
 #include "diveprofileitem.h"
 #include "helpers.h"
 #include "profile.h"
+#include "diveeventitem.h"
 
 #include <QStateMachine>
 #include <QSignalTransition>
 #include <QPropertyAnimation>
 #include <QMenu>
 #include <QContextMenuEvent>
+#include <QDebug>
 
 #ifndef QT_NO_DEBUG
 #include <QTableView>
@@ -26,10 +28,12 @@ ProfileWidget2::ProfileWidget2(QWidget *parent) :
 	background (new DivePixmapItem()),
 	profileYAxis(new DepthAxis()),
 	gasYAxis(new DiveCartesianAxis()),
+	temperatureAxis(new TemperatureAxis()),
 	timeAxis(new TimeAxis()),
 	depthController(new DiveRectItem()),
 	timeController(new DiveRectItem()),
-	diveProfileItem(new DiveProfileItem())
+	diveProfileItem(new DiveProfileItem()),
+	cartesianPlane(new DiveCartesianPlane())
 {
 	setScene(new QGraphicsScene());
 	scene()->setSceneRect(0, 0, 100, 100);
@@ -42,9 +46,9 @@ ProfileWidget2::ProfileWidget2(QWidget *parent) :
 
 	// Creating the needed items.
 	// ORDER: {BACKGROUND, PROFILE_Y_AXIS, GAS_Y_AXIS, TIME_AXIS, DEPTH_CONTROLLER, TIME_CONTROLLER, COLUMNS};
-	profileYAxis->setOrientation(Qt::Vertical);
-	gasYAxis->setOrientation(Qt::Vertical);
-	timeAxis->setOrientation(Qt::Horizontal);
+	profileYAxis->setOrientation(DiveCartesianAxis::TopToBottom);
+	gasYAxis->setOrientation(DiveCartesianAxis::TopToBottom);
+	timeAxis->setOrientation(DiveCartesianAxis::LeftToRight);
 
 	// Defaults of the Axis Coordinates:
 	profileYAxis->setMinimum(0);
@@ -57,6 +61,13 @@ ProfileWidget2::ProfileWidget2(QWidget *parent) :
 	profileYAxis->setX(2);
 	profileYAxis->setTickSize(1);
 	gasYAxis->setLine(0, 0, 0, 20);
+
+	temperatureAxis->setOrientation(DiveCartesianAxis::BottomToTop);
+	temperatureAxis->setLine(0, 60, 0, 90);
+	temperatureAxis->setX(3);
+	temperatureAxis->setTickSize(2);
+	temperatureAxis->setTickInterval(300);
+
 	timeAxis->setLine(0,0,96,0);
 	timeAxis->setX(3);
 	timeAxis->setTickSize(1);
@@ -64,9 +75,13 @@ ProfileWidget2::ProfileWidget2(QWidget *parent) :
 	timeController->setRect(0, 0, 10, 5);
 	timeController->setX(sceneRect().width() - timeController->boundingRect().width()); // Position it on the right spot.
 
+	cartesianPlane->setBottomAxis(timeAxis);
+	cartesianPlane->setLeftAxis(profileYAxis);
+	scene()->addItem(cartesianPlane);
+
 	// insert in the same way it's declared on the Enum. This is needed so we don't use an map.
 	QList<QGraphicsItem*> stateItems; stateItems << background << profileYAxis << gasYAxis <<
-							timeAxis << depthController << timeController;
+							timeAxis << depthController << timeController << temperatureAxis;
 	Q_FOREACH(QGraphicsItem *item, stateItems) {
 		scene()->addItem(item);
 	}
@@ -156,6 +171,8 @@ ProfileWidget2::ProfileWidget2(QWidget *parent) :
 	profileState->assignProperty(timeAxis, "y", timeAxisOnCanvas);
 	profileState->assignProperty(depthController, "y", depthControllerOffCanvas);
 	profileState->assignProperty(timeController, "y", timeControllerOffCanvas);
+	profileState->assignProperty(cartesianPlane, "verticalLine", profileYAxisExpanded);
+	profileState->assignProperty(cartesianPlane, "horizontalLine", timeAxis->line());
 
 	// Edit, everything but the background and gasYAxis are shown.
 	editState->assignProperty(this, "backgroundBrush", QBrush(Qt::darkGray));
@@ -252,10 +269,17 @@ void ProfileWidget2::plotDives(QList<dive*> dives)
 	 * shown.
 	 */
 	struct plot_info pInfo = calculate_max_limits_new(d, currentdc);
+	int maxtime = get_maxtime(&pInfo);
+	int maxdepth = get_maxdepth(&pInfo);
 
-	profileYAxis->setMaximum(pInfo.maxdepth);
+	// It seems that I'll have a lot of boilerplate setting the model / axis for
+	// each item, I'll mostly like to fix this in the future, but I'll keep at this for now.
+	profileYAxis->setMaximum(qMax<long>(pInfo.maxdepth + M_OR_FT(10,30), maxdepth * 2 / 3));
 	profileYAxis->updateTicks();
-	timeAxis->setMaximum(pInfo.maxtime);
+	temperatureAxis->setMinimum(pInfo.mintemp);
+	temperatureAxis->setMaximum(pInfo.maxtemp);
+	//temperatureAxis->updateTicks();
+	timeAxis->setMaximum(maxtime);
 	timeAxis->updateTicks();
 	dataModel->setDive(current_dive, pInfo);
 
@@ -271,6 +295,35 @@ void ProfileWidget2::plotDives(QList<dive*> dives)
 	diveProfileItem->setVerticalDataColumn(DivePlotDataModel::DEPTH);
 	diveProfileItem->setHorizontalDataColumn(DivePlotDataModel::TIME);
 	scene()->addItem(diveProfileItem);
+
+	qDeleteAll(eventItems);
+	eventItems.clear();
+
+	struct event *event = currentdc->events;
+	while (event) {
+		DiveEventItem *item = new DiveEventItem();
+		item->setHorizontalAxis(timeAxis);
+		item->setVerticalAxis(profileYAxis);
+		item->setModel(dataModel);
+		item->setEvent(event);
+		scene()->addItem(item);
+		eventItems.push_back(item);
+		event = event->next;
+	}
+
+	if(temperatureItem){
+		scene()->removeItem(temperatureItem);
+		delete temperatureItem;
+	}
+	temperatureItem = new DiveTemperatureItem();
+	temperatureItem->setHorizontalAxis(timeAxis);
+	temperatureItem->setVerticalAxis(temperatureAxis);
+	temperatureItem->setModel(dataModel);
+	temperatureItem->setVerticalDataColumn(DivePlotDataModel::TEMPERATURE);
+	temperatureItem->setHorizontalDataColumn(DivePlotDataModel::TIME);
+	scene()->addItem(temperatureItem);
+
+
 	emit startProfileState();
 }
 
