@@ -32,6 +32,7 @@ int parseTemperatureToMkelvin(const QString& text);
 QString get_dive_date_string(timestamp_t when);
 QString get_short_dive_date_string(timestamp_t when);
 QString get_trip_date_string(timestamp_t when, int nr);
+QString get_cylinder_segment_usage_string(cylinder_segment_use_t usage);
 
 extern DiveComputerList dcList;
 

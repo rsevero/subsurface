@@ -960,8 +960,8 @@ struct plot_data *populate_plot_entries(struct dive *dive, struct divecomputer *
 		entry->in_deco = sample->in_deco;
 		entry->cns = sample->cns;
 		entry->po2 = sample->po2 / 1000.0;
-		printf("Sample %d: time %d - depth %d sensor %d - entry cylinder pressure %d\n", 
-			i, sample->time.seconds, sample->depth.mm, sample->sensor, 
+		printf("Sample %d: time %d - depth %d sensor %d - entry cylinder pressure %d\n",
+			i, sample->time.seconds, sample->depth.mm, sample->sensor,
 			get_pressure_string(entry->cylinder[sample->sensor]));
 		SENSOR_PRESSURE(entry->cylinder[sample->sensor]) = sample->cylinderpressure.mbar;
 		if (sample->temperature.mkelvin)
@@ -1435,20 +1435,6 @@ struct divecomputer *select_dc(struct divecomputer *main)
 	return main;
 }
 
-static const char * get_usage_name(cylinder_segment_use_t usage)
-{
-	switch (usage) {
-	case OC:
-		return translate("gettextFromC", "OC");
-	case CCR_DILUENT:
-		return translate("gettextFromC", "CCR Diluent");
-	case CCR_O2:
-		return translate("gettextFromC", "CCR O2");
-	default:
-		return translate("gettextFromC", "Not in use");
-	}
-}
-
 static void plot_string(struct plot_data *entry, char *buf, int bufsize,
 			bool has_ndl)
 {
@@ -1466,7 +1452,7 @@ static void plot_string(struct plot_data *entry, char *buf, int bufsize,
 			pressurevalue = get_pressure_units(GET_PRESSURE(entry->cylinder[cyl_index]), &pressure_unit);
 			memcpy(buf2, buf, bufsize);
 			snprintf(buf, bufsize, translate("gettextFromC","%s\nP (%s):%d %s"),
-				buf2, get_usage_name(entry->cylinder[cyl_index].usage), pressurevalue, pressure_unit);
+				buf2, get_cylinder_segment_usage_string(entry->cylinder[cyl_index].usage), pressurevalue, pressure_unit);
 		}
 	}
 	if (entry->temperature) {
@@ -1487,8 +1473,8 @@ static void plot_string(struct plot_data *entry, char *buf, int bufsize,
 			if (entry->cylinder[i].usage == NOT_IN_USE)
 				continue;
 			memcpy(buf2, buf, bufsize);
-			snprintf(buf, bufsize, translate("gettextFromC","%s\nSAC (%s):%2.1fl/min"), 
-				get_usage_name(entry->cylinder[i].usage), buf2, 
+			snprintf(buf, bufsize, translate("gettextFromC","%s\nSAC (%s):%2.1fl/min"),
+				get_cylinder_segment_usage_string(entry->cylinder[i].usage), buf2,
 				entry->cylinder[i].sac / 1000.0);
 		}
 	}
@@ -1720,9 +1706,9 @@ void compare_samples(struct plot_data *e1, struct plot_data *e2, char *buf, int 
 			snprintf(buf, bufsize,
 				translate("gettextFromC","%s %sP %d:%d %s %s %s %s "),
 				buf2, UTF8_DELTA, cyl_index, pressure_change, pressure_unit,
-				get_usage_name(start->cylinder[cyl_index].usage),
+				get_cylinder_segment_usage_string(start->cylinder[cyl_index].usage),
 				UTF8_RIGHTWARDS_ARROW,
-				get_usage_name(stop->cylinder[cyl_index].usage));
+				get_cylinder_segment_usage_string(stop->cylinder[cyl_index].usage));
 			memcpy(buf2, buf, bufsize);
 		}
 	}
