@@ -674,7 +674,7 @@ static void fill_missing_tank_pressures(struct dive *dive, struct plot_info *pi,
 				/* Use that overall pressure change to update the current pressure */
 				cur_pr[cyl] = interpolate.start + magic * interpolate.acc_pressure_time + 0.5;
 			}
-			INTERPOLATED_PRESSURE(entry) = cur_pr[cyl];
+			INTERPOLATED_PRESSURE(entry->cylinder[cyl]) = cur_pr[cyl];
 		}
 	}
 }
@@ -750,7 +750,7 @@ static int set_cylinder_index(struct plot_info *pi, int i, int cylinderindex, un
 
 static void check_gas_change_events(struct dive *dive, struct divecomputer *dc, struct plot_info *pi)
 {
-	int cylinderindex = 0;
+	int i, cylinderindex = 0;
 	struct event *ev = get_next_event(dc->events, "gaschange");
 
 	if (!ev)
@@ -1076,7 +1076,7 @@ static void setup_gas_sensor_pressure(struct dive *dive, struct divecomputer *dc
 
 static void populate_pressure_information(struct dive *dive, struct divecomputer *dc, struct plot_info *pi)
 {
-	int ii, cyl_index;
+	int i, cyl_index;
 	pr_track_t *track_pr[MAX_CYLINDERS] = {NULL, };
 	pr_track_t *current;
 	bool missing_pr = false;
