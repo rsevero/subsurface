@@ -13,7 +13,6 @@
 #include "deco.h"
 #include "libdivecomputer/parser.h"
 #include "libdivecomputer/version.h"
-#include "helpers.h"
 
 int selected_dive = -1; /* careful: 0 is a valid value */
 char zoomed_plot = 0;
@@ -960,9 +959,6 @@ struct plot_data *populate_plot_entries(struct dive *dive, struct divecomputer *
 		entry->in_deco = sample->in_deco;
 		entry->cns = sample->cns;
 		entry->po2 = sample->po2 / 1000.0;
-		printf("Sample %d: time %d - depth %d sensor %d - entry cylinder pressure %d\n",
-			i, sample->time.seconds, sample->depth.mm, sample->sensor,
-			get_pressure_string(entry->cylinder[sample->sensor]));
 		SENSOR_PRESSURE(entry->cylinder[sample->sensor]) = sample->cylinderpressure.mbar;
 		if (sample->temperature.mkelvin)
 			entry->temperature = lasttemp = sample->temperature.mkelvin;
@@ -1714,4 +1710,18 @@ void compare_samples(struct plot_data *e1, struct plot_data *e2, char *buf, int 
 	}
 
 	free(buf2);
+}
+
+const char * get_cylinder_segment_usage_string(cylinder_segment_use_t usage)
+{
+	switch (usage) {
+	case OC:
+		return translate("gettextFromC", "OC");
+	case CCR_DILUENT:
+		return translate("gettextFromC", "CCR Diluent");
+	case CCR_O2:
+		return translate("gettextFromC", "CCR O2");
+	default:
+		return translate("gettextFromC", "Not in use");
+	}
 }

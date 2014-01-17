@@ -566,17 +566,3 @@ xsltStylesheetPtr get_stylesheet(const char *name)
 
 	return xslt;
 }
-
-QString get_cylinder_segment_usage_string(cylinder_segment_use_t usage)
-{
-	switch (usage) {
-	case OC:
-		return QString(translate("gettextFromC", "OC"));
-	case CCR_DILUENT:
-		return QString(translate("gettextFromC", "CCR Diluent"));
-	case CCR_O2:
-		return QString(translate("gettextFromC", "CCR O2"));
-	default:
-		return QString(translate("gettextFromC", "Not in use"));
-	}
-}

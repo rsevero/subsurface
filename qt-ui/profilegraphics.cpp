@@ -737,7 +737,7 @@ void ProfileGraphicsView::plot_cylinder_pressure_text()
 
 			if (!mbar)
 				continue;
-			if (entry->cylinder[cyl]->usage != NOT_IN_USE) {
+			if (entry->cylinder[cyl].usage != NOT_IN_USE) {
 				if (!seen_cyl[cyl]) {
 					plot_pressure_value(mbar, entry->sec, LEFT, BOTTOM);
 					plot_gas_value(mbar, entry->sec, LEFT, TOP,
@@ -902,7 +902,7 @@ void ProfileGraphicsView::plot_cylinder_pressure()
 		struct plot_data *entry = gc.pi.entry + i;
 		for (cyl = 0; cyl < MAX_CYLINDERS; cyl++) {
 			mbar = GET_PRESSURE(entry->cylinder[cyl]);
-			if (entry->cylinder[cyl]->usage == NOT_IN_USE) {
+			if (entry->cylinder[cyl].usage == NOT_IN_USE) {
 				lift_pen = true;
 			}
 			if (!mbar) {
@@ -910,10 +910,10 @@ void ProfileGraphicsView::plot_cylinder_pressure()
 				continue;
 			}
 
-			QColor c = get_sac_color(entry->cylinder[cyl]->sac, dive->sac);
+			QColor c = get_sac_color(entry->cylinder[cyl].sac, dive->sac);
 
 			if (lift_pen) {
-				if (!first_plot && entry->cylinder[cyl]->usage == last_usage) {
+				if (!first_plot && entry->cylinder[cyl].usage == last_usage) {
 					/* if we have a previous event from the same tank,
 					 * draw at least a short line */
 					int prev_pr;
@@ -939,7 +939,7 @@ void ProfileGraphicsView::plot_cylinder_pressure()
 			}
 
 			from = QPointF(SCALEGC(entry->sec, mbar));
-			last_usage = entry->cylinder[cyl]->usage;
+			last_usage = entry->cylinder[cyl].usage;
 		}
 	}
 }
@@ -1026,9 +1026,9 @@ void ProfileGraphicsView::plot_one_event(struct event *ev)
 	if (ev->value) {
 		if (ev->name && strcmp(ev->name, "gaschange") == 0) {
 			int cyl;
-			for (cyl = 0; cyl < MAX_CYLINDERS; cyl++) 
-				if ((entry->cylinder[cyl]->usage != OC) &&
-					(entry->cylinder[cyl]->usage != CCR_DILUENT))
+			for (cyl = 0; cyl < MAX_CYLINDERS; cyl++)
+				if ((entry->cylinder[cyl].usage != OC) &&
+					(entry->cylinder[cyl].usage != CCR_DILUENT))
 					continue;
 			if (cyl == MAX_CYLINDERS)
 				return;
