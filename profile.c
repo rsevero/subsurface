@@ -33,7 +33,7 @@ static void dump_pi (struct plot_info *pi)
 	for (i = 0; i < pi->nr; i++) {
 		struct plot_data *entry = &pi->entry[i];
 		printf("    entry[%d]:{sec:%d\n"
-			"                time:%d:%02d temperature:%d depth:%d stopdepth:%d stoptime:%d ndl:%d smoothed:%d po2:%lf phe:%lf pn2:%lf sum-pp %lf}\n",
+			"      time:%d:%02d temperature:%d depth:%d stopdepth:%d stoptime:%d ndl:%d smoothed:%d po2:%lf phe:%lf pn2:%lf sum-pp %lf}\n",
 			i, entry->sec,
 			entry->sec / 60, entry->sec % 60,
 			entry->temperature, entry->depth, entry->stopdepth, entry->stoptime, entry->ndl, entry->smoothed,
@@ -41,9 +41,9 @@ static void dump_pi (struct plot_info *pi)
 			entry->po2 + entry->phe + entry->pn2);
 		for (cyl_index = 0; cyl_index < MAX_CYLINDERS; cyl_index++) {
 			if (entry->cylinder[cyl_index].usage == NOT_IN_USE)
-				printf("    cylinderindex:%d not in use on this entry.\n", j);
+				printf("        cylinderindex:%d not in use on this entry\n", cyl_index);
 			else
-				printf("    cylinderindex:%d:{usage:%d pressure:{%d,%d pressure_time:%d}\n",
+				printf("        cylinderindex:%d:{usage:%d pressure: {%d,%d pressure_time:%d}\n",
 					cyl_index, entry->cylinder[cyl_index].usage,
 					entry->cylinder[cyl_index].pressure[SENSOR_PR],
 					entry->cylinder[cyl_index].pressure[INTERPOLATED_PR],
@@ -750,18 +750,18 @@ static int set_cylinder_index(struct plot_info *pi, int i, int cyl_index, unsign
 
 static void check_gas_change_events(struct dive *dive, struct divecomputer *dc, struct plot_info *pi)
 {
-	int i, cylinderindex = 0;
+	int i = 0, cyl_index = 0;
 	struct event *ev = get_next_event(dc->events, "gaschange");
 
 	if (!ev)
 		return;
 
 	do {
-		i = set_cylinder_index(pi, i, cylinderindex, ev->time.seconds, OC);
-		cylinderindex = get_cylinder_index(dive, ev);
+		i = set_cylinder_index(pi, i, cyl_index, ev->time.seconds, OC);
+		cyl_index = get_cylinder_index(dive, ev);
 		ev = get_next_event(ev->next, "gaschange");
 	} while (ev);
-	set_cylinder_index(pi, i, cylinderindex, ~0u, OC);
+	set_cylinder_index(pi, i, cyl_index, ~0u, OC);
 }
 
 
@@ -1391,7 +1391,7 @@ struct plot_info *create_plot_info(struct dive *dive, struct divecomputer *dc, s
 	if (prefs.profile_calc_ceiling)
 		calculate_deco_information(dive, dc, pi, print_mode);
 
-	/* And finaly calculate gas partial pressures */
+	/* And finally calculate gas partial pressures */
 	calculate_gas_information(dive, pi);
 
 	pi->meandepth = dive->dc.meandepth.mm;

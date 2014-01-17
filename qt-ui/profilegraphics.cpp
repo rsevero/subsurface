@@ -887,9 +887,6 @@ void ProfileGraphicsView::plot_single_temp_text(int sec, int mkelvin)
 void ProfileGraphicsView::plot_cylinder_pressure()
 {
 	int i, cyl_index;
-	int lift_pen = false;
-	int first_plot = true;
-	cylinder_segment_use_t last_usage = NOT_IN_USE;
 
 	if (!get_cylinder_pressure_range(&gc))
 		return;
@@ -897,10 +894,13 @@ void ProfileGraphicsView::plot_cylinder_pressure()
 	struct dive *dive = getDiveById(diveId);
 	Q_ASSERT(dive != NULL);
 	QPointF from, to;
-	for (i = 0; i < gc.pi.nr; i++) {
-		int mbar;
-		struct plot_data *entry = gc.pi.entry + i;
-		for (cyl_index = 0; cyl_index < MAX_CYLINDERS; cyl_index++) {
+	for (cyl_index = 0; cyl_index < MAX_CYLINDERS; cyl_index++) {
+		int lift_pen = false;
+		int first_plot = true;
+		for (i = 0; i < gc.pi.nr; i++) {
+			int mbar;
+			struct plot_data *entry = gc.pi.entry + i;
+
 			mbar = GET_PRESSURE(entry->cylinder[cyl_index]);
 			if (entry->cylinder[cyl_index].usage == NOT_IN_USE) {
 				lift_pen = true;
@@ -913,7 +913,10 @@ void ProfileGraphicsView::plot_cylinder_pressure()
 			QColor c = get_sac_color(entry->cylinder[cyl_index].sac, dive->sac);
 
 			if (lift_pen) {
-				if (!first_plot && entry->cylinder[cyl_index].usage == last_usage) {
+				if (first_plot) {
+					first_plot = false;
+					from = QPointF(SCALEGC(entry->sec, mbar));
+				} else {
 					/* if we have a previous event from the same tank,
 					 * draw at least a short line */
 					int prev_pr;
@@ -924,9 +927,6 @@ void ProfileGraphicsView::plot_cylinder_pressure()
 					pen.setColor(c);
 					item->setPen(pen);
 					scene()->addItem(item);
-				} else {
-					first_plot = false;
-					from = QPointF(SCALEGC(entry->sec, mbar));
 				}
 				lift_pen = false;
 			} else {
@@ -939,7 +939,6 @@ void ProfileGraphicsView::plot_cylinder_pressure()
 			}
 
 			from = QPointF(SCALEGC(entry->sec, mbar));
-			last_usage = entry->cylinder[cyl_index].usage;
 		}
 	}
 }
