@@ -6,18 +6,23 @@ extern "C" {
 #endif
 
 typedef enum { STABLE, SLOW, MODERATE, FAST, CRAZY } velocity_t;
+typedef enum { NOT_IN_USE, OC, CCR_O2, CCR_DILUENT } cylinder_segment_use_t;
 
 struct membuffer;
 struct divecomputer;
 struct graphics_context;
 struct plot_info;
-struct plot_data {
-	unsigned int in_deco:1;
-	int cylinderindex;
-	int sec;
+struct plot_cylinder_data {
+        cylinder_segment_use_t usage;
 	/* pressure[0] is sensor pressure
 	 * pressure[1] is interpolated pressure */
-	int pressure[2];
+        int pressure[2];
+        int sac;
+        int pressure_time;
+};
+struct plot_data {
+	unsigned int in_deco:1;
+	int sec;
 	int temperature;
 	/* Depth info */
 	int depth;
@@ -28,7 +33,6 @@ struct plot_data {
 	int stopdepth;
 	int cns;
 	int smoothed;
-	int sac;
 	double po2, pn2, phe;
 	double mod, ead, end, eadd;
 	velocity_t velocity;
@@ -36,13 +40,13 @@ struct plot_data {
 	struct plot_data *min[3];
 	struct plot_data *max[3];
 	int avg[3];
+	struct plot_cylinder_data cylinder[MAX_CYLINDERS];
 	/* values calculated by us */
 	unsigned int in_deco_calc:1;
 	int ndl_calc;
 	int tts_calc;
 	int stoptime_calc;
 	int stopdepth_calc;
-	int pressure_time;
 	int heartbeat;
 	int bearing;
 };
